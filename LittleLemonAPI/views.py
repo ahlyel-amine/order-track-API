@@ -1,13 +1,16 @@
 from rest_framework import generics
 from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer
-from django.contrib.auth.models import Group, User
-from rest_framework import status
-from django.http import Http404  # Import Http404 to handle the exception
 from djoser.views import UserViewSet
 from rest_framework.exceptions import NotFound
-
+from rest_framework.permissions import IsAuthenticated
 from .models import MenuItem, Category
+from .permissions import IsManager, IsCustomer, IsDeliveryCrew
 # from rest_framework.authtoken.views import ObtainAuthToken
+from django.contrib.auth.models import User
+
+class ManagerGroupView(generics.ListCreateAPIView):
+    queryset = User.objects.filter(groups__name='Manager')
+    serializer_class = GroupSerializer
 
 class CustomUserViewSet(UserViewSet):
     def get_object(self):
@@ -15,16 +18,6 @@ class CustomUserViewSet(UserViewSet):
         if self.request.path.endswith('/me/'):
             return self.request.user
         raise NotFound("User not found")
-
-class GroupView(generics.ListCreateAPIView):
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
-
-class SingleGroupView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
-    lookup_field = 'name'  # Use the name field for lookup
-    lookup_url_kwarg = 'name'  # URL parameter is name
 
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -38,6 +31,16 @@ class MenuItemView(generics.ListCreateAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
 
+    def get_permissions(self):
+        if self.request.method in ['POST']:
+            return [IsManager()]
+        return [IsAuthenticated()]
+
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+    
+    def get_permissions(self):
+        if self.request.method in ['GET']:
+            return [IsAuthenticated()]
+        return [IsManager()]
