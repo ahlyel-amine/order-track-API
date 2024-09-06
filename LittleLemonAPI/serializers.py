@@ -37,11 +37,15 @@ class MenuItemSerializer(serializers.ModelSerializer):
     #         return []
 
 class CartSerializer(serializers.ModelSerializer):
+    # user = serializers.ReadOnlyField(default=serializers.CurrentUserDefault())
+    user = serializers.PrimaryKeyRelatedField(default=serializers.CurrentUserDefault(), )
+
     class Meta:
         model = Cart
         fields = ['id', 'user', 'menuitem', 'quantity', 'unit_price', 'price']
 
 class OrderSerualizer(serializers.ModelSerializer):
+    user = serializers.IntegerField(write_only=True)
     class Meta:
         model = Order
         fields = ['id', 'user', 'delivery_crew', 'status', 'total', 'date']
