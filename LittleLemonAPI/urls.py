@@ -10,6 +10,9 @@ urlpatterns = [
         path('users/me/', views.CustomUserViewSet.as_view({'get': 'retrieve'}), name='user-me'),
     ])),
 
+    path('categories/', views.CategoryView.as_view(), name='categories list'),
+    path('categories/<int:pk>', views.SingleCategoryView.as_view(), name='category'),
+
     path('menu-items/', views.MenuItemView.as_view(), name='menu-items list'),
     path('menu-items/<int:pk>', views.SingleMenuItemView.as_view(), name='menu-item'),
 

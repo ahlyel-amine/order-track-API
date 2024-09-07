@@ -2,15 +2,31 @@ from rest_framework import generics, status
 from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer, CartSerializer
 from djoser.views import UserViewSet
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticated
-from .models import MenuItem, Cart
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from .models import MenuItem, Cart, Order, Category
 from .permissions import IsManager, IsCustomer, IsDeliveryCrew
 from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from rest_framework.authentication import TokenAuthentication
+class CategoryView(generics.ListCreateAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
 
+    def get_permissions(self):
+        if self.request.method in ['POST']:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+class SingleCategoryView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.request.method in ['GET']:
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
 class DeliveryCrewGroupView(generics.ListCreateAPIView):
     """
     A view for managing the delivery crew group.
@@ -103,11 +119,9 @@ class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
 
 class CartView(generics.ListCreateAPIView):
     serializer_class = CartSerializer
-    authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Cart.objects.filter(user=self.request.user)
-
-    # def get_permissions(self):
-    #     return [IsAuthenticated()]
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
