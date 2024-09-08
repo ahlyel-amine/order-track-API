@@ -3,20 +3,15 @@ from rest_framework.permissions import BasePermission
 
 class IsDeliveryCrew(BasePermission):
     def has_permission(self, request, view):
-        return request.user.groups.filter(name=['Delivery Crew']).exists()
-
-class IsCustomer(BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name=['Customer']).exists()
+        return request.user.groups.filter(name=['Delivery']).exists()
 
 class IsManager(BasePermission):
     def has_permission(self, request, view):
         return request.user.groups.filter(name='Manager').exists()
 
-
 class IsCustomerOrDeliveryCrew(BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.groups.filter(name__in=['Customer', 'Delivery Crew']).exists()
+        return request.user and request.user.groups.filter(name__in=['Customer', 'Delivery']).exists()
 
 class IsManagerOrReadOnly(BasePermission):
     def has_permission(self, request, view):
@@ -27,3 +22,6 @@ class IsManagerOrReadOnly(BasePermission):
         return request.user and request.user.groups.filter(name='Manager').exists()
     
 
+class isCostumer(BasePermission):
+    def has_permission(self, request, view):
+        return not request.user.groups.filter(name__in=['Manager', 'Delivery']).exists()

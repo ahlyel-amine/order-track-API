@@ -138,3 +138,5 @@ DJOSER = {
         'user_create': 'LittleLemonAPI.serializers.CustomUserCreateSerializer',
     },
 }
+
+APPEND_SLASH=False

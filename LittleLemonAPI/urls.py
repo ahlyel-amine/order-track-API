@@ -20,7 +20,10 @@ urlpatterns = [
     path('groups/manager/users/<int:pk>', views.DeleteSingleUserGroupView, {'group_name': 'Manager'}, name='manager group list'),
 
     path('groups/delivery-crew/users/', views.DeliveryCrewGroupView.as_view(), name='manager group list'),
-    path('groups/delivery-crew/users/<int:pk>', views.DeleteSingleUserGroupView, {'group_name': 'Delivery crew'}, name='manager group list'),
+    path('groups/delivery-crew/users/<int:pk>', views.DeleteSingleUserGroupView, {'group_name': 'Delivery'}, name='manager group list'),
 
-    path('cart/menu-items/', views.CartView.as_view(), name='cart list'),
+    path('cart/menu-items/', views.CartView.as_view(), name='cart'),
+
+    path('orders/', views.OrderView.as_view(), name='orders list'),
+    path('orders/<int:pk>', views.SingleOrderView.as_view(), name='order view'),
 ]

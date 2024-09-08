@@ -1,15 +1,14 @@
 from rest_framework import generics, status
-from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer, CartSerializer
+from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer, CartSerializer, OrderSerializer
 from djoser.views import UserViewSet
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from .models import MenuItem, Cart, Order, Category
-from .permissions import IsManager, IsCustomer, IsDeliveryCrew
+from .permissions import IsManager, IsDeliveryCrew, IsManagerOrReadOnly, isCostumer
 from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from rest_framework.authentication import TokenAuthentication
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -27,14 +26,9 @@ class SingleCategoryView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ['GET']:
             return [IsAuthenticated()]
         return [IsAdminUser()]
+
 class DeliveryCrewGroupView(generics.ListCreateAPIView):
-    """
-    A view for managing the delivery crew group.
-
-    This view allows listing and adding users in the delivery crew group.
-    """
-
-    group_name = 'Delivery crew'
+    group_name = 'Delivery'
     queryset = User.objects.filter(groups__name=group_name)
     serializer_class = GroupSerializer
 
@@ -58,18 +52,7 @@ class DeliveryCrewGroupView(generics.ListCreateAPIView):
     def get_permissions(self):
         return [IsManager()]
 
-
 class ManagerGroupView(DeliveryCrewGroupView):
-    """
-    A view that returns a list of users belonging to the 'Manager' group.
-
-    Inherits from the DeliveryCrewGroupView class.
-
-    Attributes:
-        group_name (str): The name of the group to filter users by.
-        queryset (QuerySet): The queryset of users filtered by the group name.
-
-    """
     group_name = 'Manager'
     queryset = User.objects.filter(groups__name=group_name)
 
@@ -101,27 +84,89 @@ class CustomUserViewSet(UserViewSet):
 class MenuItemView(generics.ListCreateAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
-
-    def get_permissions(self):
-        if self.request.method in ['POST']:
-            return [IsManager()]
-        return [IsAuthenticated()]
+    permission_classes = [IsManagerOrReadOnly]
+    # def get_permissions(self):
+    #     if self.request.method in ['POST']:
+    #         return [IsManager()]
+    #     return [IsAuthenticated()]
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
-    
-    def get_permissions(self):
-        if self.request.method in ['GET']:
-            return [IsAuthenticated()]
-        return [IsManager()]
+    permission_classes = [IsManagerOrReadOnly]
+
+    # def get_permissions(self):
+    #     if self.request.method in ['GET']:
+    #         return [IsAuthenticated()]
+    #     return [IsManager()]
 
 
 class CartView(generics.ListCreateAPIView):
     serializer_class = CartSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, isCostumer]
 
+    def delete(self, request):
+        Cart.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     def get_queryset(self):
         return Cart.objects.filter(user=self.request.user)
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+class OrderView(generics.ListCreateAPIView):
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        if self.request.user.groups.filter(name='Manager').exists():
+            return Order.objects.all()
+        if self.request.user.groups.filter(name='Delivery').exists():
+            return Order.objects.filter(delivery_crew=self.request.user)
+        return Order.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        cart_items = Cart.objects.filter(user=user)
+        if not cart_items.exists():
+            raise ValidationError("Cart is empty")
+        order = serializer.save(user=user)
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                menuitem=item.menuitem,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                price=item.price
+            )
+        cart_items.delete()
+
+class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = OrderSerializer
+
+    def get_queryset(self):
+        if self.request.user.groups.filter(name='Manager').exists():
+            return Order.objects.all()
+        if self.request.user.groups.filter(name='Delivery').exists():
+            return Order.objects.filter(delivery_crew=self.request.user)
+        return Order.objects.filter(user=self.request.user)
+    # def perform_create(self, serializer):
+
+    def get_permissions(self):
+        if self.request.method in ['GET']:
+            return [IsAuthenticated()]
+        if self.request.method in ['PATCH']:
+            # if self.request.user.groups.filter(name='Delivery').exists():
+                # print(self.request.user.groups.all())
+            # return [IsDeliveryCrew()]
+            pass
+        if self.request.method in ['PUT']:
+            # if self.request.user.groups.filter(name='Manager').exists():
+            return [IsDeliveryCrew()]
+        if self.request.method == 'DELETE':
+            return [IsManager()]
+        return super().get_permissions()
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        if user.groups.filter(name='Delivery').exists() and 'status' in self.request.data:
+            serializer.save(status=self.request.data.get('status'))
+        else:
+            serializer.save()
