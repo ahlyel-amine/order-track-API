@@ -12,20 +12,12 @@ from rest_framework.exceptions import ValidationError
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-
-    def get_permissions(self):
-        if self.request.method in ['POST']:
-            return [IsAdminUser()]
-        return [IsAuthenticated()]
+    permission_classes = [IsManagerOrReadOnly]
 
 class SingleCategoryView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-
-    def get_permissions(self):
-        if self.request.method in ['GET']:
-            return [IsAuthenticated()]
-        return [IsAdminUser()]
+    permission_classes = [IsManagerOrReadOnly]
 
 class DeliveryCrewGroupView(generics.ListCreateAPIView):
     group_name = 'Delivery'
@@ -85,20 +77,13 @@ class MenuItemView(generics.ListCreateAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsManagerOrReadOnly]
-    # def get_permissions(self):
-    #     if self.request.method in ['POST']:
-    #         return [IsManager()]
-    #     return [IsAuthenticated()]
+
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsManagerOrReadOnly]
 
-    # def get_permissions(self):
-    #     if self.request.method in ['GET']:
-    #         return [IsAuthenticated()]
-    #     return [IsManager()]
 
 
 class CartView(generics.ListCreateAPIView):
@@ -153,14 +138,10 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ['GET']:
             return [IsAuthenticated()]
         if self.request.method in ['PATCH']:
-            # if self.request.user.groups.filter(name='Delivery').exists():
-                # print(self.request.user.groups.all())
-            # return [IsDeliveryCrew()]
-            pass
-        if self.request.method in ['PUT']:
-            # if self.request.user.groups.filter(name='Manager').exists():
-            return [IsDeliveryCrew()]
-        if self.request.method == 'DELETE':
+            if self.request.user.groups.filter(name='Delivery').exists():
+                return [IsDeliveryCrew()]
+            return [IsManager()]
+        if self.request.method in ['PUT', 'DELETE']:
             return [IsManager()]
         return super().get_permissions()
 

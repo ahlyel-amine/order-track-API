@@ -36,8 +36,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-    user = UserCreateSerializer(read_only=True)
-    user_id = serializers.HiddenField(default=serializers.CurrentUserDefault(), source='user')
+    user = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
     menuitem = MenuItemSerializer(read_only=True)
     price = serializers.SerializerMethodField(source='get_price', read_only=True)
     unit_price = serializers.DecimalField(source='menuitem.price', read_only=True, max_digits=6, decimal_places=2)
@@ -45,7 +44,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'menuitem', 'quantity', 'unit_price', 'price', 'menuitem_id', 'user_id']
+        fields = ['id', 'user', 'menuitem', 'quantity', 'unit_price', 'price', 'menuitem_id']
         validators = [
             UniqueTogetherValidator(
                 queryset=Cart.objects.all(),

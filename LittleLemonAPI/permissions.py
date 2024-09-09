@@ -1,17 +1,12 @@
 from rest_framework.permissions import BasePermission
 
-
 class IsDeliveryCrew(BasePermission):
     def has_permission(self, request, view):
-        return request.user.groups.filter(name=['Delivery']).exists()
+        return request.user.groups.filter(name='Delivery').exists()
 
 class IsManager(BasePermission):
     def has_permission(self, request, view):
         return request.user.groups.filter(name='Manager').exists()
-
-class IsCustomerOrDeliveryCrew(BasePermission):
-    def has_permission(self, request, view):
-        return request.user and request.user.groups.filter(name__in=['Customer', 'Delivery']).exists()
 
 class IsManagerOrReadOnly(BasePermission):
     def has_permission(self, request, view):
