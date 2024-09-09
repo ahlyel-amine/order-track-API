@@ -1,5 +1,5 @@
 from rest_framework import generics, status
-from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer, CartSerializer, OrderSerializer
+from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer, CartSerializer, OrderSerializer, OrderItemSerializer
 from djoser.views import UserViewSet
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -8,7 +8,7 @@ from .permissions import IsManager, IsDeliveryCrew, IsManagerOrReadOnly, isCostu
 from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-
+from rest_framework.exceptions import ValidationError
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -124,6 +124,7 @@ class OrderView(generics.ListCreateAPIView):
         return Order.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        user = self.request.user
         cart_items = Cart.objects.filter(user=user)
         if not cart_items.exists():
             raise ValidationError("Cart is empty")
@@ -147,7 +148,6 @@ class SingleOrderView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.user.groups.filter(name='Delivery').exists():
             return Order.objects.filter(delivery_crew=self.request.user)
         return Order.objects.filter(user=self.request.user)
-    # def perform_create(self, serializer):
 
     def get_permissions(self):
         if self.request.method in ['GET']:

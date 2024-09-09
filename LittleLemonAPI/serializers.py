@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from djoser.serializers import UserCreateSerializer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.validators import UniqueTogetherValidator
-
+from rest_framework.exceptions import ValidationError, PermissionDenied
 class CustomUserCreateSerializer(UserCreateSerializer):
     class Meta:
         model = User
@@ -69,26 +69,31 @@ class CartSerializer(serializers.ModelSerializer):
         validated_data['price'] = validated_data['unit_price'] * validated_data['quantity']  # Calculate total price
         return super().create(validated_data)
 
-class OrderSerializer(serializers.ModelSerializer):
-    user = UserCreateSerializer(read_only=True)
-    user_id = serializers.HiddenField(default=serializers.CurrentUserDefault(), source='user')
-    # delivery_crew = UserCreateSerializer(default=None)
-    delivery_crew = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(groups__name='Delivery'), required=False)
 
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'order', 'menuitem', 'quantity', 'unit_price', 'price']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+    delivery_crew = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(groups__name='Delivery'), required=False)
+    total = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
+    order_items = OrderItemSerializer(many=True, read_only=True, source='orderitem_set')
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'delivery_crew', 'status', 'total', 'date', 'user_id']
-    
-    def create(self, validated_data):
-        user = validated_data['user']
-        cart_items = Cart.objects.filter(user=user)
-        if not cart_items.exists():
-            raise ValidationError("Cart is empty")
-        # cart = Cart.objects.filter(user=validated_data['user'])
-        # total = 0
-        order = super().create(validated_data)
-        for item in cart_items:
+        fields = ['id', 'user', 'delivery_crew', 'status', 'total', 'date', 'order_items']
+
+    def get_total(self, cart:Cart):
+        total = 0
+        for item in cart:
+            total += item.price
+        return total
+
+    def create_order_items(self, order:Order, cart:Cart):
+        for item in cart:
             OrderItem.objects.create(
                 order=order,
                 menuitem=item.menuitem,
@@ -96,18 +101,21 @@ class OrderSerializer(serializers.ModelSerializer):
                 unit_price=item.unit_price,
                 price=item.price
             )
+
+    def create(self, validated_data):
+        user = validated_data['user']
+        cart_items = Cart.objects.filter(user=user)
+        if not cart_items.exists():
+            raise ValidationError("Cart is empty")
+        validated_data['total'] = self.get_total(cart_items)
+        order = super().create(validated_data)
+        self.create_order_items(order, cart_items)
         cart_items.delete()
         return order
 
-        # for element in cart:
-        #     total += element.price
-        # print(total)
-        # validated_data['total'] = total
-        # return super().create(validated_data)
     def update(self, instance, validated_data):
         request = self.context.get('request')
         user = request.user
-
         if user.groups.filter(name='Manager').exists():
             if 'delivery_crew' in validated_data:
                 instance.delivery_crew = validated_data['delivery_crew']
@@ -120,58 +128,5 @@ class OrderSerializer(serializers.ModelSerializer):
                 raise PermissionDenied("Delivery can only update the status.")
         else:
             raise PermissionDenied("Only managers and Delivery can update orders.")
-
         instance.save()
         return instance
-    # def update(self, instance, validated_data):
-        # request = self.context.get('request')
-        # if request.user.groups.filter(name='Delivery').exists():
-        #     if 'status' in request.data:
-        #         validated_data['status'] = request.data['status']
-        #     return super().update(instance, validated_data)
-        # if request.user.groups.filter(name='Manager').exists():
-        #     if 'delivery_crew' in request.data and request.data['delivery_crew'] is not '':
-        #         try:
-        #             user = User.objects.get(id=request.data['delivery_crew'])
-        #             if not user.groups.filter(name='Delivery').exists():
-        #                 raise serializers.ValidationError("User is not in Delivery group.")
-        #             validated_data['delivery_crew'] = user
-        #         except User.DoesNotExist:
-        #             raise serializers.ValidationError("User does not exist.")
-        #     if 'status' in request.data:
-        #         validated_data['status'] = request.data['status']
-        # return super().update(instance, validated_data)
-    #     request = self.context.get('request')
-    #     user = request.user
-
-    #     if not self.is_manager(user):
-    #         raise PermissionDenied("Only managers can update order.")
-
-    #     self.update_delivery_crew(request, validated_data)
-    #     self.update_status(request, validated_data)
-
-    #     return super().update(instance, validated_data)
-
-
-    # def is_delivery_crew(self, user):
-    #     return user.groups.filter(name='Delivery').exists()
-
-    # def is_manager(self, user):
-    #     return user.groups.filter(name='Manager').exists()
-    # def update_status(self, request, validated_data):
-    #     if 'status' in request.data:
-    #         validated_data['status'] = request.data['status']
-    # def update_delivery_crew(self, request, validated_data):
-    #     if 'delivery_crew' in request.data and request.data['delivery_crew']:
-    #         try:
-    #             user = User.objects.get(id=request.data['delivery_crew'])
-    #             if not user.groups.filter(name='Delivery').exists():
-    #                 raise serializers.ValidationError("User is not in Delivery group.")
-    #             validated_data['delivery_crew'] = user
-    #         except User.DoesNotExist:
-    #             raise serializers.ValidationError("User does not exist.")
-
-class OrderItem(serializers.ModelSerializer):
-    class Meta:
-        model = OrderItem
-        fields = ['id', 'order', 'menuitem', 'quantity', 'unit_price', 'price']
