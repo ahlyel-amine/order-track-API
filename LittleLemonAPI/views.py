@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from .filters import MenuItemFilter, OrderFilter
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -84,6 +85,10 @@ class MenuItemView(generics.ListCreateAPIView):
     filterset_class = MenuItemFilter
     ordering_fields = ['title', 'price']
     search_fields = ['title', 'category__title']
+    def get_throttles(self):
+        if self.request.method == 'GET':
+            return [UserRateThrottle()]
+        return []
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
@@ -107,6 +112,13 @@ class OrderView(generics.ListCreateAPIView):
     filterset_class = OrderFilter
     ordering_fields = ['order_items_count', 'total', 'date', 'status']
     search_fields = ['orderitem__menuitem__title', 'orderitem__menuitem__category__title']
+
+    def get_throttles(self):
+        if self.request.method == 'GET':
+            return [UserRateThrottle()]
+        if self.request.method == 'POST' and self.request.user.groups.filter(name='Delivery').exists():
+            return [UserRateThrottle()]
+        return []
 
     def get_queryset(self):
         if self.request.user.groups.filter(name='Manager').exists():
