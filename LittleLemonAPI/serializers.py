@@ -93,10 +93,14 @@ class OrderSerializer(serializers.ModelSerializer):
     delivery_crew = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(groups__name='Delivery'), required=False)
     total = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
     order_items = OrderItemSerializer(many=True, read_only=True, source='orderitem_set')
+    order_items_count = serializers.SerializerMethodField(read_only=True, source='get_order_items_count')
     date = serializers.DateField(read_only=True)
     class Meta:
         model = Order
-        fields = ['id', 'user', 'delivery_crew', 'status', 'total', 'date', 'order_items']
+        fields = ['id', 'user', 'delivery_crew', 'status', 'total', 'date', 'order_items', 'order_items_count']
+
+    def get_order_items_count(self, order:Order):
+        return order.orderitem_set.count()
 
     def get_total(self, cart:Cart):
         total = 0

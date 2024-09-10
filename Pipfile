@@ -9,6 +9,7 @@ djangorestframework = "*"
 djangorestframework-xml = "*"
 djoser = "*"
 bleach = "*"
+django-filter = "*"
 
 [dev-packages]
 

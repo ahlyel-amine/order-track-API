@@ -1,4 +1,6 @@
 from rest_framework import generics, status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter, SearchFilter
 from .serializers import MenuItemSerializer, CategorySerializer, GroupSerializer, CartSerializer, OrderSerializer, OrderItemSerializer
 from djoser.views import UserViewSet
 from rest_framework.exceptions import NotFound
@@ -9,6 +11,7 @@ from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from .filters import MenuItemFilter, OrderFilter
 
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -75,32 +78,17 @@ class CustomUserViewSet(UserViewSet):
         raise NotFound("User not found")
 
 class MenuItemView(generics.ListCreateAPIView):
+    queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsManagerOrReadOnly]
-
-    def get_queryset(self):
-        queryset = MenuItem.objects.all()
-        category = self.request.query_params.get('category')
-        to_price = self.request.query_params.get('to_price')
-        search = self.request.query_params.get('search')
-        ordering = self.request.query_params.get('ordering')
-        if category is not None:
-            queryset = queryset.filter(category__title=category)
-        if to_price is not None:
-            queryset = queryset.filter(price__lte=to_price)
-        if search is not None:
-            queryset = queryset.filter(title__icontains=search)
-        if ordering is not None:
-            ordering_fields = ordering.split(',')
-            queryset = queryset.order_by(*ordering_fields)
-        return queryset
+    filterset_class = MenuItemFilter
+    ordering_fields = ['title', 'price']
+    search_fields = ['title', 'category__title']
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsManagerOrReadOnly]
-
-
 
 class CartView(generics.ListCreateAPIView):
     serializer_class = CartSerializer
@@ -116,6 +104,9 @@ class CartView(generics.ListCreateAPIView):
 
 class OrderView(generics.ListCreateAPIView):
     serializer_class = OrderSerializer
+    filterset_class = OrderFilter
+    ordering_fields = ['order_items_count', 'total', 'date', 'status']
+    search_fields = ['orderitem__menuitem__title', 'orderitem__menuitem__category__title']
 
     def get_queryset(self):
         if self.request.user.groups.filter(name='Manager').exists():
