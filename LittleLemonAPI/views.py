@@ -9,15 +9,16 @@ from django.contrib.auth.models import User, Group
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+
 class CategoryView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsManagerOrReadOnly]
+    # permission_classes = [IsManagerOrReadOnly]
 
 class SingleCategoryView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsManagerOrReadOnly]
+    # permission_classes = [IsManagerOrReadOnly]
 
 class DeliveryCrewGroupView(generics.ListCreateAPIView):
     group_name = 'Delivery'
@@ -74,10 +75,25 @@ class CustomUserViewSet(UserViewSet):
         raise NotFound("User not found")
 
 class MenuItemView(generics.ListCreateAPIView):
-    queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
     permission_classes = [IsManagerOrReadOnly]
 
+    def get_queryset(self):
+        queryset = MenuItem.objects.all()
+        category = self.request.query_params.get('category')
+        to_price = self.request.query_params.get('to_price')
+        search = self.request.query_params.get('search')
+        ordering = self.request.query_params.get('ordering')
+        if category is not None:
+            queryset = queryset.filter(category__title=category)
+        if to_price is not None:
+            queryset = queryset.filter(price__lte=to_price)
+        if search is not None:
+            queryset = queryset.filter(title__icontains=search)
+        if ordering is not None:
+            ordering_fields = ordering.split(',')
+            queryset = queryset.order_by(*ordering_fields)
+        return queryset
 
 class SingleMenuItemView(generics.RetrieveUpdateDestroyAPIView):
     queryset = MenuItem.objects.all()

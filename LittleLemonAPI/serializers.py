@@ -1,11 +1,13 @@
 from rest_framework import serializers
-# from rest_framework.permissions import IsAuthenticated
 from .models import Category, MenuItem, Cart, Order, OrderItem
 from django.contrib.auth.models import User
 from djoser.serializers import UserCreateSerializer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.validators import UniqueTogetherValidator
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from django.utils import timezone
+import bleach
+
 class CustomUserCreateSerializer(UserCreateSerializer):
     class Meta:
         model = User
@@ -18,16 +20,27 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = ['id', 'username']
 
 class CategorySerializer(serializers.ModelSerializer):
+    title = serializers.CharField(max_length=255)
+    slug = serializers.SlugField()
+
     class Meta:
         model = Category
         fields = ['id', 'slug', 'title']
 
+    def validate_title(self, value):
+        return bleach.clean(value)
+
 class MenuItemSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True)
+    featured = serializers.BooleanField()
+    title = serializers.CharField(max_length=255)
     class Meta:
         model = MenuItem
         fields = ['id', 'title', 'price', 'featured', 'category', 'category_id']
+
+    def validate_title(self, value):
+        return bleach.clean(value)
 
     def validate_category_id(self, value):
         if not Category.objects.filter(id=value).exists():
@@ -48,7 +61,7 @@ class CartSerializer(serializers.ModelSerializer):
         validators = [
             UniqueTogetherValidator(
                 queryset=Cart.objects.all(),
-                fields=['user_id', 'menuitem_id'],
+                fields=['user', 'menuitem_id'],
                 message="This user already has an order for this menu item."
             )
         ]
@@ -64,8 +77,8 @@ class CartSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         menuitem = MenuItem.objects.get(id=validated_data['menuitem_id'])
-        validated_data['unit_price'] = menuitem.price  # Assign unit price from menuitem
-        validated_data['price'] = validated_data['unit_price'] * validated_data['quantity']  # Calculate total price
+        validated_data['unit_price'] = menuitem.price
+        validated_data['price'] = validated_data['unit_price'] * validated_data['quantity']
         return super().create(validated_data)
 
 
@@ -80,7 +93,7 @@ class OrderSerializer(serializers.ModelSerializer):
     delivery_crew = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(groups__name='Delivery'), required=False)
     total = serializers.DecimalField(max_digits=6, decimal_places=2, read_only=True)
     order_items = OrderItemSerializer(many=True, read_only=True, source='orderitem_set')
-
+    date = serializers.DateField(read_only=True)
     class Meta:
         model = Order
         fields = ['id', 'user', 'delivery_crew', 'status', 'total', 'date', 'order_items']
@@ -107,6 +120,7 @@ class OrderSerializer(serializers.ModelSerializer):
         if not cart_items.exists():
             raise ValidationError("Cart is empty")
         validated_data['total'] = self.get_total(cart_items)
+        validated_data['date'] = timezone.now()
         order = super().create(validated_data)
         self.create_order_items(order, cart_items)
         cart_items.delete()

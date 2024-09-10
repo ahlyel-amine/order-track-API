@@ -15,7 +15,6 @@ class IsManagerOrReadOnly(BasePermission):
             return request.user and request.user.is_authenticated
         # Allow write methods only for managers
         return request.user and request.user.groups.filter(name='Manager').exists()
-    
 
 class isCostumer(BasePermission):
     def has_permission(self, request, view):
