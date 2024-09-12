@@ -72,7 +72,6 @@ class CartSerializer(serializers.ModelSerializer):
         return value
 
     def get_price(self, product:Cart):
-        print("unit price : " + str(product.unit_price) + " quantity : " + str(product.quantity) + " total : " + str(product.unit_price * product.quantity))
         return product.unit_price * product.quantity
 
     def create(self, validated_data):
@@ -124,7 +123,7 @@ class OrderSerializer(serializers.ModelSerializer):
         if not cart_items.exists():
             raise ValidationError("Cart is empty")
         validated_data['total'] = self.get_total(cart_items)
-        validated_data['date'] = timezone.now()
+        validated_data['date'] = timezone.now().date()
         order = super().create(validated_data)
         self.create_order_items(order, cart_items)
         cart_items.delete()

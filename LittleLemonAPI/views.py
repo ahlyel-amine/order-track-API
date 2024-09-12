@@ -15,18 +15,18 @@ from .filters import MenuItemFilter, OrderFilter
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 
 class CategoryView(generics.ListCreateAPIView):
-    queryset = Category.objects.all()
+    queryset = Category.objects.all().order_by('id')
     serializer_class = CategorySerializer
-    # permission_classes = [IsManagerOrReadOnly]
+    permission_classes = [IsManagerOrReadOnly]
 
 class SingleCategoryView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    # permission_classes = [IsManagerOrReadOnly]
+    permission_classes = [IsManagerOrReadOnly]
 
 class DeliveryCrewGroupView(generics.ListCreateAPIView):
     group_name = 'Delivery'
-    queryset = User.objects.filter(groups__name=group_name)
+    queryset = User.objects.filter(groups__name=group_name).order_by('id')
     serializer_class = GroupSerializer
 
     def post(self, request):
@@ -51,7 +51,7 @@ class DeliveryCrewGroupView(generics.ListCreateAPIView):
 
 class ManagerGroupView(DeliveryCrewGroupView):
     group_name = 'Manager'
-    queryset = User.objects.filter(groups__name=group_name)
+    queryset = User.objects.filter(groups__name=group_name).order_by('id')
 
 
 @api_view(['DELETE'])
@@ -79,12 +79,14 @@ class CustomUserViewSet(UserViewSet):
         raise NotFound("User not found")
 
 class MenuItemView(generics.ListCreateAPIView):
-    queryset = MenuItem.objects.all()
+    queryset = MenuItem.objects.all().order_by('id')
     serializer_class = MenuItemSerializer
     permission_classes = [IsManagerOrReadOnly]
     filterset_class = MenuItemFilter
     ordering_fields = ['title', 'price']
     search_fields = ['title', 'category__title']
+
+
     def get_throttles(self):
         if self.request.method == 'GET':
             return [UserRateThrottle()]
@@ -103,7 +105,7 @@ class CartView(generics.ListCreateAPIView):
         Cart.objects.filter(user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     def get_queryset(self):
-        return Cart.objects.filter(user=self.request.user)
+        return Cart.objects.filter(user=self.request.user).order_by('id')
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
@@ -113,6 +115,7 @@ class OrderView(generics.ListCreateAPIView):
     ordering_fields = ['order_items_count', 'total', 'date', 'status']
     search_fields = ['orderitem__menuitem__title', 'orderitem__menuitem__category__title']
 
+
     def get_throttles(self):
         if self.request.method == 'GET':
             return [UserRateThrottle()]
@@ -120,12 +123,17 @@ class OrderView(generics.ListCreateAPIView):
             return [UserRateThrottle()]
         return []
 
+    def get_permissions(self):
+        if self.request.method in ['POST']:
+            return [isCostumer()]
+        return super().get_permissions()
+
     def get_queryset(self):
         if self.request.user.groups.filter(name='Manager').exists():
-            return Order.objects.all()
+            return Order.objects.all().order_by('id')
         if self.request.user.groups.filter(name='Delivery').exists():
-            return Order.objects.filter(delivery_crew=self.request.user)
-        return Order.objects.filter(user=self.request.user)
+            return Order.objects.filter(delivery_crew=self.request.user).order_by('id')
+        return Order.objects.filter(user=self.request.user).order_by('id')
 
     def perform_create(self, serializer):
         user = self.request.user
