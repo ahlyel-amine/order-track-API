@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from faker import Faker
-from LittleLemonAPI.models import Category, MenuItem, Cart, Order, OrderItem
+from OrderTrackAPI.models import Category, MenuItem, Cart, Order, OrderItem
 from django.contrib.auth.models import User
 import random
 

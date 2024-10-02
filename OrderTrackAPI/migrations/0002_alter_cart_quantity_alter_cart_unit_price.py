@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('LittleLemonAPI', '0001_initial'),
+        ('OrderTrackAPI', '0001_initial'),
     ]
 
     operations = [

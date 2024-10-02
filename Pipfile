@@ -10,6 +10,7 @@ djangorestframework-xml = "*"
 djoser = "*"
 bleach = "*"
 django-filter = "*"
+drf_yasg = "*"
 
 [dev-packages]
 
