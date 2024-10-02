@@ -1,13 +1,13 @@
 # Project Structure and API Routes
 
 ## Introduction
-This document outlines the project structure, necessary API endpoints, and other important details about the Little Lemon restaurant API. The API supports various roles with access to different functionalities, allowing users to manage menu items, place orders, assign delivery crews, and track order deliveries.
+This document outlines the project structure, necessary API endpoints, and other important details about the API. The API supports various roles with access to different functionalities, allowing users to manage menu items, place orders, assign delivery crews, and track order deliveries.
 
 ## Scope
-The API project for the Little Lemon restaurant is designed to enable developers to create web and mobile applications. The system supports users with different roles, such as managers and delivery crew, allowing them to browse, edit menu items, place and track orders, and manage deliveries.
+The API is designed to enable developers to create web and mobile applications. The system supports users with different roles, such as managers and delivery crew, allowing them to browse, edit menu items, place and track orders, and manage deliveries.
 
 ## Project Structure
-The project consists of a single Django application named `LittleLemonAPI`. All required API endpoints are implemented within this app. Dependencies are managed using `pipenv` in a virtual environment to ensure a clean and isolated project setup.
+The project consists of a single Django application named `API`. All required API endpoints are implemented within this app. Dependencies are managed using `pipenv` in a virtual environment to ensure a clean and isolated project setup.
 
 ## API Design
 
@@ -24,14 +24,14 @@ Users who are not assigned to any group are considered customers, and their acce
 ### Error Handling and Status Codes
 The API provides appropriate HTTP status codes for different scenarios, including successful requests and error conditions:
 
-| HTTP Status Code | Description                                      |
-| ---------------- | ------------------------------------------------ |
-| **200 - Ok**     | Returned for all successful `GET`, `PUT`, `PATCH`, and `DELETE` requests. |
-| **201 - Created**| Returned for successful `POST` requests.          |
-| **403 - Unauthorized** | Returned when authorization fails for the current user token. |
-| **401 - Forbidden** | Returned when authentication fails.           |
+| HTTP Status Code      | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| **200 - Ok**          | Returned for all successful `GET`, `PUT`, `PATCH`, and `DELETE` requests. |
+| **201 - Created**     | Returned for successful `POST` requests.          |
+| **403 - Unauthorized**| Returned when authorization fails for the current user token. |
+| **401 - Forbidden**   | Returned when authentication fails.              |
 | **400 - Bad Request** | Returned for validation errors in `POST`, `PUT`, `PATCH`, and `DELETE` requests. |
-| **404 - Not Found** | Returned when a resource is not found.         |
+| **404 - Not Found**   | Returned when a resource is not found.            |
 
 ## API Endpoints
 
@@ -92,4 +92,4 @@ The API provides robust order management for both customers and managers, allowi
 
 ---
 
-This API project provides all the required endpoints to manage the restaurant's menu, user roles, orders, and cart functionalities. Each endpoint ensures proper role-based access control, error handling, and the use of appropriate HTTP status codes for a smooth user experience.
+This API project provides all the required endpoints to manage menu, user roles, orders, and cart functionalities. Each endpoint ensures proper role-based access control, error handling, and the use of appropriate HTTP status codes for a smooth user experience.
